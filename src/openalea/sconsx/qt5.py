@@ -31,9 +31,6 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "/home/scons/scons/branch.0/branch.96/baseline/src/engine/SCons/Tool/qt.py 0.96.92.D001 2006/04/10 23:13:27 knight"
-
-import os
 import os.path
 import re
 
@@ -43,10 +40,14 @@ import SCons.Defaults
 import SCons.Scanner
 import SCons.Tool
 import SCons.Util
+import SCons.Tool.cxx
+import SCons.Warnings
 from SCons.Script.SConscript import SConsEnvironment
 
+cplusplus = SCons.Tool.cxx
+
 #NO_FRAMEWORK = False
-class ToolQtWarning(SCons.Warnings.Warning):
+class ToolQtWarning(SCons.Warnings.SConsWarning):
     pass
 
 class GeneratedMocFileNotIncluded(ToolQtWarning):
@@ -63,9 +64,8 @@ qrcinclude_re = re.compile(r'<file>([^<]*)</file>', re.M)
 header_extensions = [".h", ".hxx", ".hpp", ".hh"]
 if SCons.Util.case_sensitive_suffixes('.h', '.H'):
     header_extensions.append('.H')
-#cplusplus = __import__('c++', globals(), locals(), [])
-#cxx_suffixes = cplusplus.CXXSuffixes
-cxx_suffixes = [".c", ".cxx", ".cpp", ".cc"]
+
+cxx_suffixes = cplusplus.CXXSuffixes
 
 def checkMocIncluded(target, source, env):
     moc = target[0]
@@ -74,15 +74,14 @@ def checkMocIncluded(target, source, env):
     # not really sure about the path transformations (moc.cwd? cpp.cwd?) :-/
     path = SCons.Defaults.CScan.path_function(env, moc.cwd)
     includes = SCons.Defaults.CScan(cpp, env, path)
-    if not moc in includes:
+    if moc not in includes:
         SCons.Warnings.warn(
             GeneratedMocFileNotIncluded,
             "Generated moc file '%s' is not included by '%s'" %
             (str(moc), str(cpp)))
 
 def find_file(filename, paths, node_factory):
-    retval = None
-    for udir in paths:
+    for dir in paths:
         node = node_factory(filename, udir)
         if node.rexists():
             return node
@@ -113,7 +112,7 @@ class _Automoc:
             debug = 0
 
         # some shortcuts used in the scanner
-        _FS = SCons.Node.FS.default_fs
+        #_FS = SCons.Node.FS.default_fs
         splitext = SCons.Util.splitext
         objBuilder = getattr(env, self.objBuilderName)
 
@@ -152,10 +151,7 @@ class _Automoc:
                 # c or fortran source
                 continue
             #cpp_contents = comment.sub('', cpp.get_contents())
-            try:
-                cpp_contents = cpp.get_contents()
-            except:
-                continue # may be an still not generated source
+            cpp_contents = cpp.get_contents()
             h = None
             for h_ext in header_extensions:
                 # try to find the header file in the corresponding source
@@ -200,24 +196,22 @@ def _detect(env):
     """Not really safe, but fast method to detect the QT library"""
 
     QTDIR = env.get('QTDIR', None)
-    if QTDIR!=None:
-        return QTDIR
+    if not QTDIR:
+        QTDIR = os.environ.get('QTDIR',None)
 
-    QTDIR = os.environ.get('QTDIR',None)
-    if QTDIR!=None:
-        return QTDIR
-
-    moc = env.WhereIs('moc-qt5') or env.WhereIs('moc5') or env.WhereIs('moc')
-    if moc:
-        SCons.Warnings.warn(
-            QtdirNotFound,
-            "QTDIR variable is not defined, using moc executable as a hint (QTDIR=%s)" % QTDIR)
-        return os.path.dirname(os.path.dirname(moc))
-
-    SCons.Warnings.warn(
-        QtdirNotFound,
-        "Could not detect qt, using empty QTDIR")
-    return None
+    if not QTDIR:
+        moc = env.WhereIs('moc-qt5') or env.WhereIs('moc5') or env.WhereIs('moc')
+        if moc:
+            QTDIR = os.path.dirname(os.path.dirname(moc))
+            SCons.Warnings.warn(
+                QtdirNotFound,
+                "QTDIR variable is not defined, using moc executable as a hint (QTDIR=%s)" % QTDIR)
+        else:
+            QTDIR = None
+            SCons.Warnings.warn(
+                QtdirNotFound,
+                "Could not detect qt, using empty QTDIR")
+    return QTDIR
 
 def generate(env):
     """Add Builders and construction variables for qt to an Environment."""
