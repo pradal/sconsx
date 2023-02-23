@@ -82,7 +82,7 @@ def checkMocIncluded(target, source, env):
 
 def find_file(filename, paths, node_factory):
     for dir in paths:
-        node = node_factory(filename, udir)
+        node = node_factory(filename, dir)
         if node.rexists():
             return node
     return None
@@ -151,7 +151,7 @@ class _Automoc:
                 # c or fortran source
                 continue
             #cpp_contents = comment.sub('', cpp.get_contents())
-            cpp_contents = cpp.get_contents()
+            cpp_contents = cpp.get_contents().decode('utf-8')
             h = None
             for h_ext in header_extensions:
                 # try to find the header file in the corresponding source
@@ -163,7 +163,7 @@ class _Automoc:
                         print("scons: qt: Scanning '%s' (header of '%s')" % \
                             (str(h), str(cpp)))
                     #h_contents = comment.sub('', h.get_contents())
-                    h_contents = h.get_contents()
+                    h_contents = h.get_contents().decode('utf-8')
                     break
             if not h and debug:
                 print("scons: qt: no header for '%s'." % (str(cpp)))
@@ -306,7 +306,7 @@ def generate(env):
 
     # Resource builder
     def scanResources(node, env, path, arg):
-        contents = node.get_contents()
+        contents = node.get_contents().decode('utf-8')
         includes = qrcinclude_re.findall(contents)
         return includes
     qrcscanner = SCons.Scanner.Scanner(name = 'qrcfile',
