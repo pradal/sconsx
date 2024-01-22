@@ -96,9 +96,11 @@ class OpenGL:
       """ Update the environment with specific flags """
       if isinstance(platform, Darwin):
           env.AppendUnique(CPPPATH=[env['gl_includes']])
-          env.AppendUnique(LINKFLAGS="-F%s"%str(env['gl_framework_path']))
-          for fmk in env['gl_frameworks']:
-              env.Append(LINKFLAGS=['-framework',str(fmk)])
+          framework = str(env['gl_framework_path'])
+          if framework:
+            env.AppendUnique(LINKFLAGS="-F%s"%str(env['gl_framework_path']))
+            for fmk in env['gl_frameworks']:
+                env.Append(LINKFLAGS=['-framework',str(fmk)])
           return
       if env.get('compiler', 'mingw') == 'mingw' and not CONDA_ENV:
           if env['gl_includes'] == self._default['msvc_include']:

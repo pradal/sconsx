@@ -389,6 +389,20 @@ def ALEASolution(options, tools=[], dir=[]):
     if len(env_compiler_options) > 0:
         print('Force environment with compiler options : '+str(env_compiler_options))
         env = Environment(options=options, **env_compiler_options)
+    elif CONDA_ENV:
+        compiler_options = dict()
+        env = os.environ
+        vars = ['CC', 'CXX', 'AS', 'AR', 'LDFLAGS', 'LD',
+                'CPPFLAGS','LIBTOOL', 'OTOOL', 'CXXFLAGS',
+                 'F90', 'F95', 'CFLAGS', 'LDFLAGS_LD', 'FFLAGS','RANLIB' ]
+        for variable in vars:
+            if variable in env:
+                if variable in ['CC', 'CXX']:
+                    compiler_options[variable] = Split(env[variable+'_FOR_BUILD'])
+                else:
+                    compiler_options[variable] = Split(env[variable])
+        
+        env = Environment(options=options, **compiler_options)
     else:
         env = Environment(options=options)
     
@@ -405,11 +419,12 @@ def ALEASolution(options, tools=[], dir=[]):
     env.Prepend(LIBPATH='$build_libdir')
 
     # If scons is run in a conda environment, append paths
+    """
     if CONDA_ENV:
         PREFIX = CONDA_PREFIX
         env.Prepend(CPPPATH=pj(PREFIX, 'include'))
         env.Prepend(LIBPATH=pj(PREFIX, 'lib'))
-
+    """
     return env
 
 from .util.lib_check import *
